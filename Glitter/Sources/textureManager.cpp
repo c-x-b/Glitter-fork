@@ -43,6 +43,27 @@ void TextureManager::GenerateFBOTexture2D(std::string texAlias, int width, int h
 	m_texIDMap.insert(make_pair(texAlias, textureID));
 }
 
+void TextureManager::GenerateTexture2DFromFloats(std::string texAlias, int width, int height, float *data) {
+	unsigned int textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, data);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	glBindTexture(GL_TEXTURE_2D, 0);
+	//glDisable(GL_TEXTURE_2D);
+
+	m_texIDMap.insert(make_pair(texAlias, textureID));
+
+	std::cout << "Successfully generate texture, textureID: " << textureID << std::endl;
+}
+
 void TextureManager::LoadTexture1D(std::string filename, std::string textureAlias)
 {
     std::string actualPath = "../../Glitter/Resources/"+ std::string(filename);
@@ -50,7 +71,7 @@ void TextureManager::LoadTexture1D(std::string filename, std::string textureAlia
 	int width, height, nrComponents;
 	unsigned int textureID;
 
-	glEnable(GL_TEXTURE_1D);
+	//glEnable(GL_TEXTURE_1D);
 
 	unsigned char* imgData = NULL;
 	imgData = stbi_load(actualPath.c_str(), &width, &height, &nrComponents, 0);
@@ -74,7 +95,7 @@ void TextureManager::LoadTexture1D(std::string filename, std::string textureAlia
 	stbi_image_free(imgData);
 	
 	glBindTexture(GL_TEXTURE_1D, 0);
-	glDisable(GL_TEXTURE_1D);
+	//glDisable(GL_TEXTURE_1D);
 
 	m_texIDMap.insert(make_pair(textureAlias, textureID));
 }
@@ -87,7 +108,7 @@ void TextureManager::LoadTexture2D(std::string filename, std::string textureAlia
 	int width, height, nrComponents;
 	unsigned int textureID;
 
-	glEnable(GL_TEXTURE_2D);
+	//glEnable(GL_TEXTURE_2D);
 
 	unsigned char* imgData = NULL;
 	imgData = stbi_load(actualPath.c_str(), &width, &height, &nrComponents, 0);
@@ -131,7 +152,7 @@ void TextureManager::LoadTexture2D(std::string filename, std::string textureAlia
 	stbi_image_free(imgData);
 
 	glBindTexture(GL_TEXTURE_2D, 0);
-	glDisable(GL_TEXTURE_2D);
+	//glDisable(GL_TEXTURE_2D);
 
 	m_texIDMap.insert(make_pair(textureAlias, textureID));
 
@@ -144,7 +165,7 @@ void TextureManager::LoadTextureCubeMap(std::vector<std::string> textureFaces, s
 	unsigned int textureID;
 	unsigned char* imgData = NULL;
 
-	glEnable(GL_TEXTURE_CUBE_MAP);
+	//glEnable(GL_TEXTURE_CUBE_MAP);
 	glGenTextures(1, &textureID);
 
 	glBindTexture(GL_TEXTURE_CUBE_MAP, textureID);
@@ -171,7 +192,7 @@ void TextureManager::LoadTextureCubeMap(std::vector<std::string> textureFaces, s
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-	glDisable(GL_TEXTURE_CUBE_MAP);
+	//glDisable(GL_TEXTURE_CUBE_MAP);
 
 	m_texIDMap.insert(make_pair(textureAlias, textureID));
 }
@@ -180,7 +201,7 @@ void TextureManager::BindTexture1D(std::string texAlias, std::string sampler, un
 {
 	assert(m_texIDMap.count(texAlias) != 0);
 	glUseProgram(program);
-	glEnable(GL_TEXTURE_1D);
+	//glEnable(GL_TEXTURE_1D);
 	unsigned int currentTextureID = m_texIDMap.at(texAlias);
 	glActiveTexture(GL_TEXTURE0 + m_activeTextureCount);
 	glBindTexture(GL_TEXTURE_1D, currentTextureID);
@@ -192,13 +213,18 @@ void TextureManager::BindTexture1D(std::string texAlias, std::string sampler, un
 
 void TextureManager::BindTexture2D(std::string texAlias, std::string sampler, Shader &shader)
 {
+	//std::cout << "BindTexture2D " << texAlias << " " << sampler << std::endl;
 	assert(m_texIDMap.count(texAlias) != 0);
 	shader.use();
-	glEnable(GL_TEXTURE_2D);
+	//glEnable(GL_TEXTURE_2D);
+	//std::cout << glGetError() << std::endl;
 	unsigned int currentTextureID = m_texIDMap.at(texAlias);
 	glActiveTexture(GL_TEXTURE0 + m_activeTextureCount);
+	//std::cout << glGetError() << std::endl;
 	glBindTexture(GL_TEXTURE_2D, currentTextureID);
+	//std::cout << glGetError() << std::endl;
 	shader.setInt(sampler.c_str(), m_activeTextureCount);
+	//std::cout << "bind end " << glGetError() << std::endl;
 	TextureUnit currTextureUnit = { GL_TEXTURE0 + m_activeTextureCount, GL_TEXTURE_2D, currentTextureID };
 	m_activeTextureUnits.push_back(currTextureUnit);
 	m_activeTextureCount++;
@@ -208,7 +234,7 @@ void TextureManager::BindTextureCubeMap(std::string texAlias, std::string sample
 {
 	assert(m_texIDMap.count(texAlias) != 0);
 	glUseProgram(program);
-	glEnable(GL_TEXTURE_CUBE_MAP);
+	//glEnable(GL_TEXTURE_CUBE_MAP);
 	unsigned int currentTextureID = m_texIDMap.at(texAlias);
 	glActiveTexture(GL_TEXTURE0 + m_activeTextureCount);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, currentTextureID);
@@ -228,7 +254,7 @@ void TextureManager::unbindTexture(std::string texAlias)
 
 	glActiveTexture(currentTextureUnit->m_activeUnit);
 	glBindTexture(currentTextureUnit->m_target, 0);
-	glDisable(currentTextureUnit->m_target);
+	//glDisable(currentTextureUnit->m_target);
 	m_activeTextureUnits.erase(currentTextureUnit);
 	m_activeTextureCount--;
 }
@@ -239,7 +265,7 @@ void TextureManager::unbindAllTextures()
 	{
 		glActiveTexture(currentTextureUnit->m_activeUnit);
 		glBindTexture(currentTextureUnit->m_target, 0);
-		glDisable(currentTextureUnit->m_target);
+		//glDisable(currentTextureUnit->m_target);
 	}
 	m_activeTextureUnits.clear();
 	m_activeTextureCount = 0;

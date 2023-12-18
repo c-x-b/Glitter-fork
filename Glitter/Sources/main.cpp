@@ -2,6 +2,7 @@
 #include "glitter.h"
 #include "shader.h"
 #include "sphere.h"
+#include "atmosphere.h"
 #include "textureManager.h"
 
 // System Headers
@@ -13,52 +14,67 @@
 #include <cstdlib>
 #include <iostream>
 
-float vertices[] = {
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  1.0f,  1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
+GLenum glCheckError_(const char *file, int line)
+{
+    GLenum errorCode;
+    while ((errorCode = glGetError()) != GL_NO_ERROR)
+    {
+        std::string error;
+        switch (errorCode)
+        {
+            case GL_INVALID_ENUM:                  error = "INVALID_ENUM"; break;
+            case GL_INVALID_VALUE:                 error = "INVALID_VALUE"; break;
+            case GL_INVALID_OPERATION:             error = "INVALID_OPERATION"; break;
+            case GL_STACK_OVERFLOW:                error = "STACK_OVERFLOW"; break;
+            case GL_STACK_UNDERFLOW:               error = "STACK_UNDERFLOW"; break;
+            case GL_OUT_OF_MEMORY:                 error = "OUT_OF_MEMORY"; break;
+            case GL_INVALID_FRAMEBUFFER_OPERATION: error = "INVALID_FRAMEBUFFER_OPERATION"; break;
+        }
+        std::cout << error << " | " << file << " (" << line << ")" << std::endl;
+    }
+    return errorCode;
+}
+#define glCheckError() glCheckError_(__FILE__, __LINE__) 
 
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  1.0f,  1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f,  0.0f,  1.0f,  0.0f,  0.0f,
+const float earthRadius = 20.0f;
+const float atmosphereRadius = earthRadius + 0.3f;
 
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f, -0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-        -0.5f, -0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f, -1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
+//glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
+glm::fvec3 lightDir(1.0f, 0.0f, 0.0f);
+glm::fvec3 lightColor(1.5f, 1.5f, 1.5f);
+TextureManager &textureManager = TextureManager::GetInstance();
 
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  0.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f,  0.0f,  0.0f,  1.0f,  0.0f,
+const float const3Divide16PI = 3.0f / (16.0f * PI);
 
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  1.0f,  0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, -1.0f,  0.0f,  0.0f,  1.0f,
+float quadVertices[] = {
+    // positions   // texCoords
+    -1.0f,  1.0f,  0.0f, 1.0f,
+    -1.0f, -1.0f,  0.0f, 0.0f,
+    1.0f, -1.0f,  1.0f, 0.0f,
 
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f,
-         0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  1.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-         0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  1.0f,  0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f,  1.0f,  0.0f,  0.0f,  1.0f
-    };
+    -1.0f,  1.0f,  0.0f, 1.0f,
+    1.0f, -1.0f,  1.0f, 0.0f,
+    1.0f,  1.0f,  1.0f, 1.0f
+};
 
-glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-TextureManager& textureManager = TextureManager::GetInstance();
+void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view) {
+    float cameraHeight = glm::length(camera.Position);
+    shader.use();
+    // vertex
+    shader.setVec3("cameraPos", camera.Position);
+    shader.setFloat("cameraHeight", cameraHeight);
+    shader.setFloat("CameraHeight2", cameraHeight * cameraHeight);
+    shader.setVec3("sunLightDir", lightDir);
+    shader.setFloat("atmosphereRadius", atmosphereRadius);
+    shader.setFloat("atmosphereRadius2", atmosphereRadius * atmosphereRadius);
+    shader.setFloat("earthRadius", earthRadius);
+    shader.setFloat("const3Divide16PI", const3Divide16PI);
+    shader.setFloat("PI", PI);
+    shader.setMat4("view", view);
+    shader.setMat4("projection", projection);
+    // fragment
+    shader.setVec3("lightColor", glm::vec3(1e5f));
+}
 
 int main(int argc, char * argv[]) {
 
@@ -90,45 +106,52 @@ int main(int argc, char * argv[]) {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
+    glCheckError();
+    glCheckError();
 
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
 
     std::vector<std::pair<std::string, std::string>> textures;
 
-    Shader shader("AtmosphereVertex.vert", "AtmosphereFragment.frag");
+    Shader shader("EarthVertex.vert", "EarthFragment.frag");
+    Shader atmosphereShader("AtmosphereVertex.vert", "AtmosphereFragment.frag");
+    Shader testShader("BasicVertex.vert", "BasicFragment.frag");
 
     textureManager.LoadTexture2D("Textures/earth_day_8k.jpg", "EarthDay");
     textures.clear();
     textures.push_back(std::make_pair("EarthDay", "sphereTexture"));
 
-    Sphere *earth = new Sphere(1.0f, 50, 50);
+    Sphere *earth = new Sphere(earthRadius, 50, 50);
     earth->generateMesh();
     earth->setPosition(glm::fvec3(0.0f, 0.0f, 0.0f));
-    earth->setScale(glm::fvec3(20.0f, 20.0f, 20.0f));
+    //earth->setScale(glm::fvec3(earthScale, earthScale, earthScale));
     //earth->setDiffuse(glm::fvec3(1.0f, 0.941f, 0.898f));
     earth->setTextures(textures);
     earth->initBuffer(shader);
-    
 
-    // unsigned int diffuseMap = loadTexture("Textures/container2.png");
-    // unsigned int specularMap = loadTexture("Textures/container2_specular.png");
+    atmosphereSphere *atmosphere = new atmosphereSphere(atmosphereRadius, 50, 50);
+    atmosphere->generateMesh();
+    atmosphere->setPosition(glm::fvec3(0.0f, 0.0f, 0.0f));
+    atmosphere->setEarthRadius(earthRadius);
+    atmosphere->calcLookUpTable();
+    atmosphere->generateLUTTexture(textureManager);
+    atmosphere->initBuffer(atmosphereShader);
 
-    // unsigned int VAO;
-    // glGenVertexArrays(1, &VAO);
+    // unsigned int testVAO;
+    // glGenVertexArrays(1, &testVAO);
     // unsigned int VBO;
     // glGenBuffers(1, &VBO);
 
+    // glBindVertexArray(testVAO);
     // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // glBindVertexArray(VAO);
-    // glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)0);
+    // glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    // glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
     // glEnableVertexAttribArray(0);
-    // glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(3 * sizeof(float)));
+    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
     // glEnableVertexAttribArray(1);
-    // glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void *)(6 * sizeof(float)));
-    // glEnableVertexAttribArray(2);
 
     // Rendering Loop
     while (glfwWindowShouldClose(mWindow) == false) 
@@ -139,39 +162,38 @@ int main(int argc, char * argv[]) {
         Do_Movement();
 
         // Background Fill Color
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        shader.use();
-        // shader.setVec3("light.position", lightPos);
-        shader.setVec3("viewPos", camera.Position);
-
-        // shader.setVec3("light.ambient",  0.2f, 0.2f, 0.2f);
-        // shader.setVec3("light.diffuse",  0.5f, 0.5f, 0.5f); 
-        // shader.setVec3("light.specular", 1.0f, 1.0f, 1.0f); 
-
-        // shader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
-        // shader.setFloat("material.shininess", 64.0f);
-
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-        shader.setMat4("projection", projection);
-
         glm::mat4 view = camera.GetViewMatrix();
+
+        glCullFace(GL_BACK);
+        shader.use();
+        shader.setVec3("viewPos", camera.Position);
+        shader.setVec3("light.direction", lightDir);
+        shader.setVec3("light.color", lightColor);
+        shader.setMat4("projection", projection);
         shader.setMat4("view", view);
-
+        glCheckError();
         earth->render(shader, textureManager);
+        glCheckError();
 
-        // glm::mat4 model = glm::mat4(1.0f);
-        // shader.setMat4("model", model);
+        glCullFace(GL_FRONT);
+        setAtmosphereShader(atmosphereShader, projection, view);
+        glCheckError();
+        atmosphere->render(atmosphereShader, textureManager);
+        glCheckError();
 
-        // glActiveTexture(GL_TEXTURE0);
-        // glBindTexture(GL_TEXTURE_2D, diffuseMap);
-
-        // glActiveTexture(GL_TEXTURE1);
-        // glBindTexture(GL_TEXTURE_2D, specularMap);
-
-        // glBindVertexArray(VAO);
-        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        // testShader.use();
+        // glBindVertexArray(testVAO);
+        // glCheckError();
+        // textureManager.BindTexture2D("AtmosphereLUT", "texture1", testShader);
+        // glCheckError();
+        // glDrawArrays(GL_TRIANGLES, 0, 6);
+        // glCheckError();
+        // textureManager.unbindAllTextures();
+        // glCheckError();
 
         // Flip Buffers and Draw
         glfwSwapBuffers(mWindow);

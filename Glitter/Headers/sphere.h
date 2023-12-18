@@ -11,7 +11,7 @@
 #include <algorithm>
 
 class Sphere {
-
+protected:
     std::vector<glm::fvec3> points;
     std::vector<glm::fvec3> tangents;
     std::vector<glm::fvec3> normals;
@@ -25,7 +25,7 @@ class Sphere {
     float radius;
 	int slices, stacks;
     glm::fvec3 position; 
-    glm::fvec3 scale;
+    //glm::fvec3 scale;
     glm::fvec3 angle;
     glm::fvec3 diffuse;
 
@@ -34,15 +34,16 @@ class Sphere {
 
     std::vector<std::pair<std::string, std::string>> textures; //pair(name in manager, sampler name in shader)
 
+    void addTriangle(glm::fvec3 v1, glm::fvec3 v2, glm::fvec3 v3); //without texture
+    void addTriangle(glm::fvec3 v1, glm::fvec3 u1, glm::fvec3 v2, glm::fvec3 u2, glm::fvec3 v3, glm::fvec3 u3);
+
 public:
     Sphere(float _radius, int _slices, int _stacks);
     ~Sphere();
 
-    void addTriangle(glm::fvec3 v1, glm::fvec3 v2, glm::fvec3 v3); //without texture
-    void addTriangle(glm::fvec3 v1, glm::fvec3 u1, glm::fvec3 v2, glm::fvec3 u2, glm::fvec3 v3, glm::fvec3 u3);
     void generateMesh();
     void setPosition(const glm::fvec3 &_position);
-    void setScale(const glm::fvec3 &_scale);
+    //void setScale(const glm::fvec3 &_scale);
     void setDiffuse(const glm::fvec3 &_diffuse);
     void setTextures(const std::vector<std::pair<std::string, std::string>> &_textures);
 

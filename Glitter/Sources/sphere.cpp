@@ -129,28 +129,28 @@ void Sphere::generateMesh() {
 			float z1 = -sinf(phi) * cosf(theta) * radius;
 
 			float u1 = float( atan2(x1, z1) / (2 * PI) + 0.5 );
-			float v1 = float( -asin(y1) / (float)PI + 0.5 );
+			float v1 = float( -asin(y1 / radius) / (float)PI + 0.5 );
 
 			float x2 = -sinf(theta + deltaTheta) * sinf(phi) * radius;
 			float y2 = -cosf(phi) * radius;
 			float z2 = -sinf(phi) * cosf(theta + deltaTheta) * radius;
 
 			float u2 = float( atan2(x2, z2) / (2 * PI) + 0.5 );
-			float v2 = float( -asin(y2) / ((float)PI) + 0.5 );
+			float v2 = float( -asin(y2 / radius) / ((float)PI) + 0.5 );
 
 			float x3 = -sinf(theta + deltaTheta) * sinf(phi + deltaPhi) * radius;
 			float y3 = -cosf(phi + deltaPhi) * radius;
 			float z3 = -sinf(phi + deltaPhi) * cosf(theta + deltaTheta) * radius;
 
 			float u3 = float( atan2(x3, z3) / (2 * (float)PI) + 0.5 );
-			float v3 = float( -asin(y3) / (float)PI + 0.5 );
+			float v3 = float( -asin(y3 / radius) / (float)PI + 0.5 );
 
 			float x4 = -sinf(theta) * sinf(phi + deltaPhi) * radius;
 			float y4 = -cosf(phi + deltaPhi) * radius;
 			float z4 = -sinf(phi + deltaPhi) * cosf(theta) * radius;
 
 			float u4 = float( atan2(x4, z4) / (2 * (float)PI) + 0.5 );
-			float v4 = float( -asin(y4) / (float)PI + 0.5 );
+			float v4 = float( -asin(y4 / radius) / (float)PI + 0.5 );
 		
 
 			glm::fvec3 p1(x1, y1, z1);
@@ -180,9 +180,9 @@ void Sphere::setPosition(const glm::fvec3 &_position) {
     position = _position;
 }
 
-void Sphere::setScale(const glm::fvec3 &_scale) {
-    scale = _scale;
-}
+// void Sphere::setScale(const glm::fvec3 &_scale) {
+//     scale = _scale;
+// }
 
 void Sphere::setDiffuse(const glm::fvec3 &_diffuse) {
     diffuse = _diffuse;
@@ -273,7 +273,7 @@ void Sphere::render(Shader &shader, TextureManager &textureManager) {
 		textureManager.BindTexture2D(it->first, it->second, shader);
 	}
 
-	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), scale);
+	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), glm::fvec3(1.0f));
 	glm::fmat4 translateMatrix = glm::translate(glm::fmat4(1.0f), position);
 	glm::fmat4 rotationMatrix_X = glm::rotate(glm::fmat4(1.0f), angle[0], glm::fvec3(1.0f, 0.0f, 0.0f));
 	glm::fmat4 rotationMatrix_Y = glm::rotate(glm::fmat4(1.0f), angle[1], glm::fvec3(0.0f, 1.0f, 0.0f));
@@ -282,12 +282,8 @@ void Sphere::render(Shader &shader, TextureManager &textureManager) {
 	glm::fmat4 modelMatrix = scaleMatrix * rotationMatrix_X * rotationMatrix_Y * rotationMatrix_Z * translateMatrix;
     shader.setMat4("model", modelMatrix);
 
-    glm::fvec3 lightColor(1.0f, 1.0f, 1.0f);
-    glm::fvec3 lightPosition(100.0f, 0.0f, 100.0f);
-    shader.setVec3("light.position", lightPosition);
-    shader.setVec3("light.color", lightColor);
-
     glBindVertexArray(VAO);
 	glDrawArrays(GL_TRIANGLES, 0, faces.size() * 3 * 3);
 
+	textureManager.unbindAllTextures();
 }
