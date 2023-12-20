@@ -11,11 +11,14 @@ class atmosphereSphere : public Sphere {
     float* lookUpTable; //[距地面高度][与竖直向上的角度][3(RGB)]   exp{-β(λ)D(P)}
     float earthRadius, atmosphereThickness;
     glm::fvec3 rayleighTerm;
+    const float rayleighBaseRate = 0.2f; // 瑞利用exp(-h/H)计算光学距离时, H /大气层厚度的值
+    glm::fvec3 mieTerm;
+    const float mieBaseRate = 0.05f; //与上同理
+    const float g = 0.75f; // 影响米氏散射的相位函数
 
-    static float scatteringCoefficient(float h, float _atmosphereThickness); //总散射系数，积分后就是衰减系数，h为海拔
     glm::fvec3 solveHit(glm::fvec3 start, glm::fvec3 dir);
-    float calcRayleighSea(float waveLength);
-    float calcIntegral(glm::fvec3 start, glm::fvec3 end, float baseRadius, int samples, float (* calcFunc)(float, float));
+    float calcRayleighTerm(float waveLength);
+    glm::fvec2 calcOpticalDepth(glm::fvec3 start, glm::fvec3 end, float baseRadius, int samples);
 
 public:
     atmosphereSphere(float _radius, int _slices, int _stacks);

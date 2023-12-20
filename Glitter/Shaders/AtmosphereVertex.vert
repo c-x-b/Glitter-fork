@@ -18,15 +18,21 @@ uniform mat4 projection;
 uniform sampler2D LUT;
 uniform mat4 model;
 uniform vec3 rayleighTerm; // β(λ)
+uniform vec3 mieTerm;
 uniform int samples;
 uniform int LUTTableSize;
+uniform float rayleighBaseRate;
+uniform float mieBaseRate;
+uniform float g;
+uniform float g2; // g*g
 
 out vec3 rayleighResult;
+out vec3 mieResult;
 
 vec3 findFromLUT(float height, float cosValue) {
     float angle = acos(cosValue);
     float normalizedAngle = angle / PI;
-    //vec4 findResult = texelFetch(LUT, ivec2(height * LUTTableSize, normalizedAngle * LUTTableSize), 0);
+    //vec4 findResult = texelFetch(LUT, ivec2(normalizedAngle * LUTTableSize, height * LUTTableSize), 0);
     vec4 findResult = texture(LUT, vec2(normalizedAngle, height));
     return findResult.rgb;
 }
@@ -42,9 +48,16 @@ void main()
 
     vec3 startPos;
     bool outAtmosphere;
-    float halfChord = rayLength - dot(-cameraPos, sightRay);
-    float rayHeight = sqrt(atmosphereRadius2 - halfChord * halfChord);
-    if (cameraHeight >= atmosphereRadius) {
+
+    // float B = 2.0 * dot(cameraPos, sightRay);
+	// float C = cameraHeight2 - atmosphereRadius2;
+	// float fDet = max(0.0, B * B - 4.0 * C);
+	// float fNear = 0.5 * (-B - sqrt(fDet));
+
+    float tmp = dot(-cameraPos, sightRay);
+    float halfChord = rayLength - tmp;
+    float rayHeight = sqrt(pow(cameraHeight, 2) - tmp * tmp);
+    if (cameraHeight > atmosphereRadius) {
         startPos = cameraPos + (rayLength - 2 * halfChord) * sightRay;
         rayLength = 2 * halfChord;
         outAtmosphere = true;
@@ -57,37 +70,58 @@ void main()
     vec3 normalizedSunLight = normalize(sunLightDir);
     float atmosphereThickness = atmosphereRadius - earthRadius;
     float cosSunAndSight = dot(normalizedSunLight, sightRay);
-    float PhaseFunctionTerm = (1.0 + cosSunAndSight * cosSunAndSight) * const3Divide16PI;
+    float rayleighPhaseTerm = (1.0 + cosSunAndSight * cosSunAndSight) * const3Divide16PI;
+    float miePhaseTerm = (1.0 - g2) * (1.0 + cosSunAndSight * cosSunAndSight) / ((2 + g2) * pow(1 + g2 - 2 * g * cosSunAndSight, 1.5)) * 2 * const3Divide16PI;
     vec3 deltaRay = rayLength / samples * sightRay;
     vec3 samplePoint = startPos + deltaRay * 0.5; 
-    vec3 resultColor = vec3(0.0);
-    if (outAtmosphere) { // out of atmosphere, entire sight term from LUT
+    vec3 rayleighColor = vec3(0.0);
+    vec3 mieColor = vec3(0.0);
+    if (rayHeight < earthRadius && rayLength > halfChord) { // ray intersect with earth, will be covered
+        rayleighColor = vec3(0.0, 0.0, 0.0);
+    }
+    else if (outAtmosphere) { // out of atmosphere, entire sight term from LUT
         for (int i = 0; i < samples; i++) {
             float pointHeight = length(samplePoint);
             float heightRate = max(0.0, (pointHeight - earthRadius) / atmosphereThickness);
             float cosSight = -dot(sightRay, samplePoint) / pointHeight;
             float cosSunlight = dot(normalizedSunLight, samplePoint) / pointHeight;
-            vec3 LUTTerm = findFromLUT(heightRate, cosSight) * findFromLUT(heightRate, cosSunlight);
-            resultColor += LUTTerm * exp(-heightRate);
+            vec2 LUTTerm = (findFromLUT(heightRate, cosSight) + findFromLUT(heightRate, cosSunlight)).rg;
+            vec3 RwithinExp = rayleighTerm * LUTTerm.r; // rayleigh
+            vec3 Rtmp = vec3(exp(-RwithinExp.x), exp(-RwithinExp.y), exp(-RwithinExp.z));
+            rayleighColor += Rtmp * exp(-heightRate / rayleighBaseRate);
+            //rayleighColor = vec3(cosSunlight, 0.0, 0.0);
+            vec3 MwithinExp = mieTerm * LUTTerm.g * 1.1; // mie
+            vec3 Mtmp = vec3(exp(-MwithinExp.x), exp(-MwithinExp.y), exp(-MwithinExp.z));
+            mieColor += Mtmp * exp(-heightRate / mieBaseRate);
+
+            vec3 withinExp = RwithinExp + MwithinExp;
+            vec3 tmp = vec3(exp(-withinExp.x), exp(-withinExp.y), exp(-withinExp.z));
+            rayleighColor += tmp * exp(-heightRate / rayleighBaseRate);
+            mieColor += tmp * exp(-heightRate / mieBaseRate);
+
             samplePoint += deltaRay;
         }
     }
-    else if (rayHeight < earthRadius && rayLength > halfChord) { // ray intersect with earth, will be covered
-        resultColor = vec3(0.0);
-    }
     else { // could calc sight term by Camera-Atmosphere divide Point-Atmosphere
         float cosCamera = dot(cameraPos, sightRay) / cameraHeight;
-        vec3 camera_AtmosphereTerm = findFromLUT((cameraHeight - earthRadius) / atmosphereThickness, cosCamera);
+        vec2 camera_AtmosphereTerm = findFromLUT((cameraHeight - earthRadius) / atmosphereThickness, cosCamera).rg;
         for (int i = 0; i < samples; i++) {
             float pointHeight = length(samplePoint);
             float heightRate = (pointHeight - earthRadius) / atmosphereThickness;
             float cosSunlight = dot(normalizedSunLight, samplePoint) / pointHeight;
-            vec3 lightTerm = findFromLUT(heightRate, cosSunlight);
+            vec2 lightTerm = findFromLUT(heightRate, cosSunlight).rg;
             float cosSight = dot(sightRay, samplePoint) / pointHeight;
-            vec3 LUTTerm = lightTerm * camera_AtmosphereTerm / findFromLUT(heightRate, cosSight);
-            resultColor += LUTTerm * exp(-heightRate);
+            vec2 LUTTerm = lightTerm + camera_AtmosphereTerm - findFromLUT(heightRate, cosSight).rg;
+            vec3 RwithinExp = rayleighTerm * LUTTerm.r; // rayleigh
+            vec3 Rtmp = vec3(exp(-RwithinExp.x), exp(-RwithinExp.y), exp(-RwithinExp.z));
+            rayleighColor += Rtmp * exp(-heightRate / rayleighBaseRate);
+            vec3 MwithinExp = mieTerm * LUTTerm.g * 1.1; // mie
+            vec3 Mtmp = vec3(exp(-MwithinExp.x), exp(-MwithinExp.y), exp(-MwithinExp.z));
+            mieColor += Mtmp * exp(-heightRate / mieBaseRate);
             samplePoint += deltaRay;
         }
     }
-    rayleighResult = resultColor * (rayLength / samples) * PhaseFunctionTerm * rayleighTerm;
+    //rayleighResult = rayleighColor;
+    rayleighResult = rayleighColor * (rayLength / samples) * rayleighPhaseTerm * rayleighTerm;
+    mieResult = mieColor * (rayLength / samples) * miePhaseTerm * mieTerm;
 }

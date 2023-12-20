@@ -17,7 +17,7 @@ uniform Light light;
 void main()
 {
     // ambient
-    vec3 ambient = light.color * 0.1 * texture(sphereTexture, TexCoords).rgb;
+    //vec3 ambient = light.color * 0.1 * texture(sphereTexture, TexCoords).rgb;
   	
     // diffuse 
     vec3 norm = normalize(Normal);
@@ -31,6 +31,6 @@ void main()
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), 16);
     vec3 specular = light.color * spec * texture(sphereTexture, TexCoords).rgb;  
         
-    vec3 result = ambient + diffuse + specular;
+    vec3 result = diffuse + specular;
     FragColor = vec4(result, 1.0);
 } 

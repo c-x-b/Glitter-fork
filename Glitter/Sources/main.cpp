@@ -36,12 +36,12 @@ GLenum glCheckError_(const char *file, int line)
 }
 #define glCheckError() glCheckError_(__FILE__, __LINE__) 
 
-const float earthRadius = 20.0f;
-const float atmosphereRadius = earthRadius + 0.3f;
+const float earthRadius = 6360e3f;
+const float atmosphereRadius = earthRadius + 60e3f;
 
 //glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
-glm::fvec3 lightDir(1.0f, 0.0f, 0.0f);
-glm::fvec3 lightColor(1.5f, 1.5f, 1.5f);
+glm::fvec3 lightDir(0.0f, 0.0f, 1.0f);
+glm::fvec3 lightColor(1.0f, 1.0f, 1.0f);
 TextureManager &textureManager = TextureManager::GetInstance();
 
 const float const3Divide16PI = 3.0f / (16.0f * PI);
@@ -58,7 +58,7 @@ float quadVertices[] = {
 };
 
 void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view) {
-    float cameraHeight = glm::length(camera.Position);
+    double cameraHeight = glm::length(camera.Position);
     shader.use();
     // vertex
     shader.setVec3("cameraPos", camera.Position);
@@ -73,7 +73,7 @@ void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view)
     shader.setMat4("view", view);
     shader.setMat4("projection", projection);
     // fragment
-    shader.setVec3("lightColor", glm::vec3(1e5f));
+    shader.setVec3("lightColor", lightColor * 5.0f);
 }
 
 int main(int argc, char * argv[]) {
@@ -161,11 +161,14 @@ int main(int argc, char * argv[]) {
         lastFrame = currentFrame;
         Do_Movement();
 
+        float angle = currentFrame / 15 * PI;
+        //lightDir = glm::fvec3(cos(angle), 0.0f, sin(angle));
+
         // Background Fill Color
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1e5f, 2e8f);
         glm::mat4 view = camera.GetViewMatrix();
 
         glCullFace(GL_BACK);
@@ -176,7 +179,7 @@ int main(int argc, char * argv[]) {
         shader.setMat4("projection", projection);
         shader.setMat4("view", view);
         glCheckError();
-        earth->render(shader, textureManager);
+        //earth->render(shader, textureManager);
         glCheckError();
 
         glCullFace(GL_FRONT);

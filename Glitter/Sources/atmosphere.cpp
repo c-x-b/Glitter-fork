@@ -14,10 +14,6 @@ void atmosphereSphere::setEarthRadius(float _earthRadius) {
     atmosphereThickness = radius - earthRadius;
 }
 
-float atmosphereSphere::scatteringCoefficient(float h, float _atmosphereThickness) {
-    return exp(-h / _atmosphereThickness);
-}
-
 glm::fvec3 atmosphereSphere::solveHit(glm::fvec3 start, glm::fvec3 dir) {
     // len(start + dir * x) = atmosphereRadius, 当一元二次方程来解
     // a = dir.x^2 + dir.y^2 + dir.z^2 = len(dir)^2
@@ -42,7 +38,7 @@ glm::fvec3 atmosphereSphere::solveHit(glm::fvec3 start, glm::fvec3 dir) {
     }
 }
 
-float atmosphereSphere::calcRayleighSea(float waveLength) {
+float atmosphereSphere::calcRayleighTerm(float waveLength) {
     const float n = 1.00029f; //空气折射率
     const float N = 2.504e25f;
     float tmp = waveLength * waveLength * N * waveLength * waveLength;
@@ -51,24 +47,27 @@ float atmosphereSphere::calcRayleighSea(float waveLength) {
     return result;
 }
 
-float atmosphereSphere::calcIntegral(glm::fvec3 start, glm::fvec3 end, float baseRadius, int samples, float (* calcFunc)(float, float)) {
-    float result = 0.0f;
+glm::fvec2 atmosphereSphere::calcOpticalDepth(glm::fvec3 start, glm::fvec3 end, float baseRadius, int samples) {
+    glm::fvec2 result = glm::fvec2(0.0f);
     glm::fvec3 delta = (end - start) / (float)samples;
     for (int i = 0; i < samples;i++) {
         glm::fvec3 pos = start + delta * (float)i;
         float h = glm::length(pos) - baseRadius;
         if (h<0.0f) {
-            result = -1.0f;
+            result = glm::fvec2(-1.0f, -1.0f);
             break;
         }
-        result += (*calcFunc)(h, atmosphereThickness);
+        result[0] += exp(-h / (atmosphereThickness * rayleighBaseRate));
+        result[1] += exp(-h / (atmosphereThickness * mieBaseRate));
     }
     result *= glm::length(delta);
     return result;
 }
 
 void atmosphereSphere::calcLookUpTable() {
-    rayleighTerm = glm::fvec3(calcRayleighSea(6.8e-7f), calcRayleighSea(5.5e-7f), calcRayleighSea(4.4e-7f));
+    //rayleighTerm = glm::fvec3(calcRayleighTerm(6.8e-7f), calcRayleighTerm(5.5e-7f), calcRayleighTerm(4.4e-7f));
+    rayleighTerm = glm::fvec3(5.8e-6f, 13.5e-6f, 33.1e-6f);
+    mieTerm = glm::fvec3(21e-6f);
     std::cout << rayleighTerm.r << " " << rayleighTerm.g << " " << rayleighTerm.b << std::endl;
     float deltaHeight = atmosphereThickness / (float)tableSize;
     float deltaAngle = PI / (float)tableSize;
@@ -81,22 +80,18 @@ void atmosphereSphere::calcLookUpTable() {
             glm::fvec3 start(0.0f, height, 0.0f);
             glm::fvec3 hitDir(sinf(angle), cosf(angle), 0.0f);
             glm::fvec3 end = solveHit(start, hitDir);
-            float integralResult = calcIntegral(start, end, earthRadius, integralSamples, scatteringCoefficient);
+            glm::fvec2 opticalDepth = calcOpticalDepth(start, end, earthRadius, integralSamples);
 
-            if (integralResult < 0.0f) {
-                lookUpTable[index * 3] = 0.0f;
-                lookUpTable[index * 3 + 1] = 0.0f;
-                lookUpTable[index * 3 + 2] = 0.0f;
+            if (opticalDepth[0] < 0.0f) {
+                lookUpTable[index * 3] = 1e32f;
+                lookUpTable[index * 3 + 1] = 1e32f;
             }
             else {
-                lookUpTable[index * 3] = exp(-integralResult * rayleighTerm.r);
-                lookUpTable[index * 3 + 1] = exp(-integralResult * rayleighTerm.g);
-                lookUpTable[index * 3 + 2] = exp(-integralResult * rayleighTerm.b);
+                lookUpTable[index * 3] = opticalDepth[0];
+                lookUpTable[index * 3 + 1] = opticalDepth[1];
             }
-            // lookUpTable[index * 3] = 0.0f;
-            // lookUpTable[index * 3 + 1] = 1.0f;
-            // lookUpTable[index * 3 + 2] = 0.0f;
-            //std::cout << heightIt << ", " << angleIt << " : (" << lookUpTable[index * 3] << ", " << lookUpTable[index * 3 + 1] << ", " << lookUpTable[index * 3 + 2] << "), ";
+            lookUpTable[index * 3 + 2] = 0.0f;
+            //std::cout << heightIt << ", " << angleIt << " : (" << lookUpTable[index * 3] << ", " << lookUpTable[index * 3 + 1] << "), ";
             index++;
         }
     }
@@ -110,7 +105,7 @@ void atmosphereSphere::generateLUTTexture(TextureManager &textureManager) {
 
 void atmosphereSphere::initBuffer(Shader &shader) {
     std::cout << "Normals Size: " << normals.size() << std::endl;
-	std::cout << "Tangents Size: " << tangents.size() << std::endl;
+    std::cout << "Tangents Size: " << tangents.size() << std::endl;
 
     int outArraySize = faces.size() * 3 * 3;
     float* outVertices = new float[outArraySize];
@@ -176,8 +171,13 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
 	glm::fmat4 modelMatrix = scaleMatrix * rotationMatrix_X * rotationMatrix_Y * rotationMatrix_Z * translateMatrix;
     shader.setMat4("model", modelMatrix);
     shader.setVec3("rayleighTerm", rayleighTerm);
-    shader.setInt("samples", 1);
+    shader.setVec3("mieTerm", mieTerm);
+    shader.setInt("samples", 50);
     shader.setInt("LUTTableSize", tableSize);
+    shader.setFloat("rayleighBaseRate", rayleighBaseRate);
+    shader.setFloat("mieBaseRate", mieBaseRate);
+    shader.setFloat("g", g);
+    shader.setFloat("g2", g * g);
     //std::cout << glGetError() << std::endl;
 
     glBindVertexArray(VAO);
