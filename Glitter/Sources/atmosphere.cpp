@@ -67,31 +67,34 @@ glm::fvec2 atmosphereSphere::calcOpticalDepth(glm::fvec3 start, glm::fvec3 end, 
 void atmosphereSphere::calcLookUpTable() {
     //rayleighTerm = glm::fvec3(calcRayleighTerm(6.8e-7f), calcRayleighTerm(5.5e-7f), calcRayleighTerm(4.4e-7f));
     rayleighTerm = glm::fvec3(5.8e-6f, 13.5e-6f, 33.1e-6f);
+    //rayleighTerm = glm::fvec3(33.1e-6f, 33.1e-6f, 33.1e-6f);
     mieTerm = glm::fvec3(21e-6f);
     std::cout << rayleighTerm.r << " " << rayleighTerm.g << " " << rayleighTerm.b << std::endl;
     float deltaHeight = atmosphereThickness / (float)tableSize;
     float deltaAngle = PI / (float)tableSize;
     int index = 0;
     for (int heightIt = 0; heightIt < tableSize; heightIt++) {
-        float height = earthRadius + deltaHeight * (0.5f + heightIt);
-        for (int angleIt = 0; angleIt < tableSize; angleIt++) {
+        float height = earthRadius + deltaHeight * (0.5f + (float)heightIt);
+        for (int angleIt = 0; angleIt < tableSize; angleIt++)
+        {
             //std::cout << "(" << heightIt << "," << angleIt << ") ";
-            float angle = deltaAngle * (0.5f + angleIt);
+            float angle = deltaAngle * (0.5f + (float)angleIt);
             glm::fvec3 start(0.0f, height, 0.0f);
             glm::fvec3 hitDir(sinf(angle), cosf(angle), 0.0f);
             glm::fvec3 end = solveHit(start, hitDir);
             glm::fvec2 opticalDepth = calcOpticalDepth(start, end, earthRadius, integralSamples);
 
             if (opticalDepth[0] < 0.0f) {
-                lookUpTable[index * 3] = 1e32f;
-                lookUpTable[index * 3 + 1] = 1e32f;
+                lookUpTable[index * 3] = 1e16f;
+                lookUpTable[index * 3 + 1] = 1e16f;
             }
             else {
                 lookUpTable[index * 3] = opticalDepth[0];
                 lookUpTable[index * 3 + 1] = opticalDepth[1];
             }
             lookUpTable[index * 3 + 2] = 0.0f;
-            //std::cout << heightIt << ", " << angleIt << " : (" << lookUpTable[index * 3] << ", " << lookUpTable[index * 3 + 1] << "), ";
+            // if (heightIt > 490)
+            //     std::cout << heightIt << ", " << angleIt << " : (" << lookUpTable[index * 3] << ", " << lookUpTable[index * 3 + 1] << "), ";
             index++;
         }
     }
@@ -100,7 +103,7 @@ void atmosphereSphere::calcLookUpTable() {
 
 void atmosphereSphere::generateLUTTexture(TextureManager &textureManager) {
     textures.push_back(std::make_pair("AtmosphereLUT", "LUT"));
-    textureManager.GenerateTexture2DFromFloats("AtmosphereLUT", tableSize, tableSize, lookUpTable);
+    textureManager.GenerateTextureRecFromFloats("AtmosphereLUT", tableSize, tableSize, lookUpTable);
 }
 
 void atmosphereSphere::initBuffer(Shader &shader) {
@@ -158,11 +161,11 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
 
     //std::cout << "atmosphere render start " << glGetError() << std::endl;
     for (auto it = textures.begin(); it != textures.end(); it++) {
-        textureManager.BindTexture2D(it->first, it->second, shader);
+        textureManager.BindTextureRec(it->first, it->second, shader);
     }
     //std::cout << glGetError() << std::endl;
 
-	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), glm::fvec3(1.0f));
+	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), glm::fvec3(radius, radius, radius));
 	glm::fmat4 translateMatrix = glm::translate(glm::fmat4(1.0f), position);
 	glm::fmat4 rotationMatrix_X = glm::rotate(glm::fmat4(1.0f), angle[0], glm::fvec3(1.0f, 0.0f, 0.0f));
 	glm::fmat4 rotationMatrix_Y = glm::rotate(glm::fmat4(1.0f), angle[1], glm::fvec3(0.0f, 1.0f, 0.0f));
@@ -182,7 +185,7 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
 
     glBindVertexArray(VAO);
     glDrawArrays(GL_TRIANGLES, 0, faces.size() * 3 * 3);
-    //std::cout << "render end " << glGetError() << std::endl;
+    // std::cout << "render end " << glGetError() << std::endl;
 
-	textureManager.unbindAllTextures();
+    textureManager.unbindAllTextures();
 }

@@ -63,7 +63,7 @@ void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view)
     // vertex
     shader.setVec3("cameraPos", camera.Position);
     shader.setFloat("cameraHeight", cameraHeight);
-    shader.setFloat("CameraHeight2", cameraHeight * cameraHeight);
+    shader.setFloat("cameraHeight2", cameraHeight * cameraHeight);
     shader.setVec3("sunLightDir", lightDir);
     shader.setFloat("atmosphereRadius", atmosphereRadius);
     shader.setFloat("atmosphereRadius2", atmosphereRadius * atmosphereRadius);
@@ -80,6 +80,7 @@ int main(int argc, char * argv[]) {
 
     // Load GLFW and Create a Window
     glfwInit();
+    glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -113,6 +114,7 @@ int main(int argc, char * argv[]) {
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
+    glEnable(GL_MULTISAMPLE);
 
     std::vector<std::pair<std::string, std::string>> textures;
 
@@ -132,7 +134,7 @@ int main(int argc, char * argv[]) {
     earth->setTextures(textures);
     earth->initBuffer(shader);
 
-    atmosphereSphere *atmosphere = new atmosphereSphere(atmosphereRadius, 50, 50);
+    atmosphereSphere *atmosphere = new atmosphereSphere(atmosphereRadius, 100, 100);
     atmosphere->generateMesh();
     atmosphere->setPosition(glm::fvec3(0.0f, 0.0f, 0.0f));
     atmosphere->setEarthRadius(earthRadius);
@@ -162,7 +164,7 @@ int main(int argc, char * argv[]) {
         Do_Movement();
 
         float angle = currentFrame / 15 * PI;
-        //lightDir = glm::fvec3(cos(angle), 0.0f, sin(angle));
+        lightDir = glm::fvec3(cos(angle), 0.0f, sin(angle));
 
         // Background Fill Color
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -179,7 +181,7 @@ int main(int argc, char * argv[]) {
         shader.setMat4("projection", projection);
         shader.setMat4("view", view);
         glCheckError();
-        //earth->render(shader, textureManager);
+        earth->render(shader, textureManager);
         glCheckError();
 
         glCullFace(GL_FRONT);

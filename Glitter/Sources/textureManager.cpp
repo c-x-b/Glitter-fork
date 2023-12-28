@@ -43,20 +43,20 @@ void TextureManager::GenerateFBOTexture2D(std::string texAlias, int width, int h
 	m_texIDMap.insert(make_pair(texAlias, textureID));
 }
 
-void TextureManager::GenerateTexture2DFromFloats(std::string texAlias, int width, int height, float *data) {
+void TextureManager::GenerateTextureRecFromFloats(std::string texAlias, int width, int height, float *data) {
 	unsigned int textureID;
 	glGenTextures(1, &textureID);
-	glBindTexture(GL_TEXTURE_2D, textureID);
+	glBindTexture(GL_TEXTURE_RECTANGLE, textureID);
 
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, data);
+	glTexImage2D(GL_TEXTURE_RECTANGLE, 0, GL_RGB32F, width, height, 0, GL_RGB, GL_FLOAT, data);
 
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_RECTANGLE, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-	glBindTexture(GL_TEXTURE_2D, 0);
+	glBindTexture(GL_TEXTURE_RECTANGLE, 0);
 	//glDisable(GL_TEXTURE_2D);
 
 	m_texIDMap.insert(make_pair(texAlias, textureID));
@@ -226,6 +226,25 @@ void TextureManager::BindTexture2D(std::string texAlias, std::string sampler, Sh
 	shader.setInt(sampler.c_str(), m_activeTextureCount);
 	//std::cout << "bind end " << glGetError() << std::endl;
 	TextureUnit currTextureUnit = { GL_TEXTURE0 + m_activeTextureCount, GL_TEXTURE_2D, currentTextureID };
+	m_activeTextureUnits.push_back(currTextureUnit);
+	m_activeTextureCount++;
+}
+
+void TextureManager::BindTextureRec(std::string texAlias, std::string sampler, Shader &shader)
+{
+	//std::cout << "BindTexture2D " << texAlias << " " << sampler << std::endl;
+	assert(m_texIDMap.count(texAlias) != 0);
+	shader.use();
+	//glEnable(GL_TEXTURE_2D);
+	//std::cout << glGetError() << std::endl;
+	unsigned int currentTextureID = m_texIDMap.at(texAlias);
+	glActiveTexture(GL_TEXTURE0 + m_activeTextureCount);
+	//std::cout << glGetError() << std::endl;
+	glBindTexture(GL_TEXTURE_RECTANGLE, currentTextureID);
+	//std::cout << glGetError() << std::endl;
+	shader.setInt(sampler.c_str(), m_activeTextureCount);
+	//std::cout << "bind end " << glGetError() << std::endl;
+	TextureUnit currTextureUnit = { GL_TEXTURE0 + m_activeTextureCount, GL_TEXTURE_RECTANGLE, currentTextureID };
 	m_activeTextureUnits.push_back(currTextureUnit);
 	m_activeTextureCount++;
 }

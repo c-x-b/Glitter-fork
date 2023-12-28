@@ -44,8 +44,9 @@ public:
 	void LoadTexture1D(std::string filename, std::string textureAlias);
 	void LoadTextureCubeMap(std::vector<std::string> textureFaces, std::string textureAlias);
 	void GenerateFBOTexture2D(std::string texAlias, int width, int height, bool isDepth = false);
-	void GenerateTexture2DFromFloats(std::string texAlias, int width, int height, float *data);
+	void GenerateTextureRecFromFloats(std::string texAlias, int width, int height, float *data);
 	void BindTexture2D(std::string texAlias, std::string sampler, Shader &shader);
+	void BindTextureRec(std::string texAlias, std::string sampler, Shader &shader);
 	void BindTexture1D(std::string texAlias, std::string sampler, unsigned int program);
 	void BindTextureCubeMap(std::string texAlias, std::string sampler, unsigned int program);
 	void unbindTexture(std::string texAlias);
