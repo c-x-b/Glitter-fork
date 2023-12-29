@@ -79,7 +79,7 @@ void main()
     vec3 rayleighColor = vec3(0.0);
     vec3 mieColor = vec3(0.0);
     
-    // if (outAtmosphere) { // out of atmosphere, entire sight term from LUT
+    //if (outAtmosphere) { // out of atmosphere, entire sight term from LUT
         for (int i = 0; i < samples; i++) {
             float pointHeight = length(samplePoint);
             float heightRate = max(0.0, (pointHeight - earthRadius) / atmosphereThickness);
@@ -88,32 +88,31 @@ void main()
             vec3 RLUTTerm = findFromLUT(RLUT, heightRate, cosSight) * findFromLUT(RLUT, heightRate, cosSunlight);
             rayleighColor += RLUTTerm * exp(-heightRate / rayleighBaseRate);
 
-            vec3 MLUTTerm = findFromLUT(MLUT, heightRate, cosSight) * findFromLUT(MLUT, heightRate, cosSunlight);
-            mieColor += MLUTTerm * exp(-heightRate / mieBaseRate);
+            // vec3 MLUTTerm = findFromLUT(MLUT, heightRate, cosSight) * findFromLUT(MLUT, heightRate, cosSunlight);
+            // mieColor += MLUTTerm * exp(-heightRate / mieBaseRate);
 
             samplePoint += deltaRay;
         }
-    // }
-    // else
-    // if (rayHeight < earthRadius - 100.0 && rayLength > halfChord) { // ray intersect with earth, will be covered
-    //     rayleighColor = vec3(0.0, 0.0, 0.0);
-    // }
-    // else { // could calc sight term by Camera-Atmosphere divide Point-Atmosphere
+        //rayleighResult = rayleighColor * (rayLength / samples) * rayleighPhaseTerm * rayleighTerm * 5.0;
+    //}
+    // else// if (cameraHeight > earthRadius)
+    // { // could calc sight term by Camera-Atmosphere divide Point-Atmosphere
     //     float cosCamera = dot(cameraPos, sightRay) / cameraHeight;
-    //     vec2 camera_AtmosphereTerm = findFromLUT((cameraHeight - earthRadius) / atmosphereThickness, cosCamera).rg;
+    //     float cameraHeightRate = max(0.0, (cameraHeight - earthRadius) / atmosphereThickness);
+    //     vec3 cameraRTerm = findFromLUT(RLUT, cameraHeightRate, cosCamera);
+    //     //rayleighColor = vec3(cameraHeightRate, cosCamera, 0.0);
+    //     //vec3 cameraMTerm = findFromLUT(MLUT, cameraHeightRate, cosCamera);
     //     for (int i = 0; i < samples; i++) {
     //         float pointHeight = length(samplePoint);
-    //         float heightRate = (pointHeight - earthRadius) / atmosphereThickness;
+    //         float heightRate = max(0.0, (pointHeight - earthRadius) / atmosphereThickness);
     //         float cosSunlight = dot(normalizedSunLight, samplePoint) / pointHeight;
-    //         vec2 lightTerm = findFromLUT(heightRate, cosSunlight).rg;
     //         float cosSight = dot(sightRay, samplePoint) / pointHeight;
-    //         vec2 LUTTerm = lightTerm + camera_AtmosphereTerm - findFromLUT(heightRate, cosSight).rg;
-    //         vec3 RwithinExp = rayleighTerm * LUTTerm.r; // rayleigh
-    //         vec3 Rtmp = vec3(exp(-RwithinExp.x), exp(-RwithinExp.y), exp(-RwithinExp.z));
-    //         rayleighColor += Rtmp * exp(-heightRate / rayleighBaseRate);
-    //         vec3 MwithinExp = mieTerm * LUTTerm.g * 1.1; // mie
-    //         vec3 Mtmp = vec3(exp(-MwithinExp.x), exp(-MwithinExp.y), exp(-MwithinExp.z));
-    //         mieColor += Mtmp * exp(-heightRate / mieBaseRate);
+    //         vec3 RLUTTerm = cameraRTerm * findFromLUT(RLUT, heightRate, cosSunlight) / findFromLUT(RLUT, heightRate, cosSight);
+    //         rayleighColor += RLUTTerm * exp(-heightRate / rayleighBaseRate);
+
+    //         // vec3 MLUTTerm = cameraMTerm * findFromLUT(MLUT, heightRate, cosSunlight) / findFromLUT(MLUT, heightRate, cosSight);
+    //         // mieResult += MLUTTerm * exp(-heightRate / mieBaseRate);
+
     //         samplePoint += deltaRay;
     //     }
     // }

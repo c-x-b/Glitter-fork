@@ -36,9 +36,6 @@ GLenum glCheckError_(const char *file, int line)
 }
 #define glCheckError() glCheckError_(__FILE__, __LINE__) 
 
-const float earthRadius = 6360e3f;
-const float atmosphereRadius = earthRadius + 60e3f;
-
 //glm::vec3 lightPos(1.2f, 1.0f, 2.0f);
 glm::fvec3 lightDir(0.0f, 0.0f, 1.0f);
 glm::fvec3 lightColor(1.0f, 1.0f, 1.0f);
@@ -164,13 +161,13 @@ int main(int argc, char * argv[]) {
         Do_Movement();
 
         float angle = currentFrame / 15 * PI;
-        lightDir = glm::fvec3(cos(angle), 0.0f, sin(angle));
+        //lightDir = glm::fvec3(cos(angle), 0.0f, sin(angle));
 
         // Background Fill Color
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 1e5f, 2e8f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 10.0f, 3e7f);
         glm::mat4 view = camera.GetViewMatrix();
 
         glCullFace(GL_BACK);
@@ -181,7 +178,7 @@ int main(int argc, char * argv[]) {
         shader.setMat4("projection", projection);
         shader.setMat4("view", view);
         glCheckError();
-        earth->render(shader, textureManager);
+        //earth->render(shader, textureManager);
         glCheckError();
 
         glCullFace(GL_FRONT);

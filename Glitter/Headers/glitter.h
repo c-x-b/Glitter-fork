@@ -27,6 +27,9 @@ float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 Camera camera(glm::vec3(0.0f, 0.0f, 1.5e7f));
 
+const float earthRadius = 6360e3f;
+const float atmosphereRadius = earthRadius + 60e3f;
+
 bool keys[1024];
 bool keysPressed[1024];
 // Moves/alters the camera positions based on user input
@@ -41,6 +44,12 @@ void Do_Movement()
         camera.ProcessKeyboard(LEFT, deltaTime);
     if (keys[GLFW_KEY_D])
         camera.ProcessKeyboard(RIGHT, deltaTime);
+    if (keys[GLFW_KEY_Q]) {
+        camera.Position = glm::normalize(camera.Position) * (6360010.0f);
+    }
+    if (keys[GLFW_KEY_E]) {
+        std::cout << glm::length(camera.Position) << " " << earthRadius << std::endl;
+    }
 }
 
 // Is called whenever a key is pressed/released via GLFW

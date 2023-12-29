@@ -98,9 +98,9 @@ void atmosphereSphere::calcLookUpTable() {
                 RLookUpTable[index * 3] = exp(-opticalDepth[0] * rayleighTerm.r);
                 RLookUpTable[index * 3 + 1] = exp(-opticalDepth[0] * rayleighTerm.g);
                 RLookUpTable[index * 3 + 2] = exp(-opticalDepth[0] * rayleighTerm.b);
-                MLookUpTable[index * 3] = exp(-opticalDepth[1] * mieTerm.r);
-                MLookUpTable[index * 3 + 1] = exp(-opticalDepth[1] * mieTerm.g);
-                MLookUpTable[index * 3 + 2] = exp(-opticalDepth[1] * mieTerm.b);
+                MLookUpTable[index * 3] = exp(-opticalDepth[1] * mieTerm.r * 1.1f);
+                MLookUpTable[index * 3 + 1] = exp(-opticalDepth[1] * mieTerm.g * 1.1f);
+                MLookUpTable[index * 3 + 2] = exp(-opticalDepth[1] * mieTerm.b * 1.1f);
             }
             //lookUpTable[index * 3 + 2] = 0.0f;
             // if (heightIt > 490)
@@ -188,7 +188,7 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
     shader.setMat4("model", modelMatrix);
     shader.setVec3("rayleighTerm", rayleighTerm);
     shader.setVec3("mieTerm", mieTerm);
-    shader.setInt("samples", 50);
+    shader.setInt("samples", 1);
     shader.setInt("LUTTableSize", tableSize);
     shader.setFloat("rayleighBaseRate", rayleighBaseRate);
     shader.setFloat("mieBaseRate", mieBaseRate);
