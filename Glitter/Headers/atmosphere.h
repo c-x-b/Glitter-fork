@@ -8,7 +8,8 @@ class atmosphereSphere : public Sphere {
     // 总计算量: (size * size * 3) * samples
     const int tableSize = 1000;
     const int integralSamples = 50;
-    float *lookUpTable; //[距地面高度][与竖直向上的角度][3(RGB)]   exp{-β(λ)D(P)}
+    float *RLookUpTable; //[距地面高度][与竖直向上的角度][3(RGB)]   exp{-β(λ)D(P)}
+    float *MLookUpTable;
     float earthRadius, atmosphereThickness;
     glm::fvec3 rayleighTerm;
     const float rayleighBaseRate = 0.15f; // 瑞利用exp(-h/H)计算光学距离时, H /大气层厚度的值

@@ -16,7 +16,8 @@ uniform mat4 view;
 uniform mat4 projection;
 
 // set in render
-uniform sampler2DRect LUT;
+uniform sampler2DRect RLUT;
+uniform sampler2DRect MLUT;
 uniform mat4 model;
 uniform vec3 rayleighTerm; // β(λ)
 uniform vec3 mieTerm;
@@ -30,7 +31,7 @@ uniform float g2; // g*g
 out vec3 rayleighResult;
 out vec3 mieResult;
 
-vec3 findFromLUT(float height, float cosValue) {
+vec3 findFromLUT(sampler2DRect LUT, float height, float cosValue) {
     float angle = acos(cosValue);
     float normalizedAngle = angle / PI;
     //vec4 findResult = texelFetch(LUT, ivec2(normalizedAngle * LUTTableSize, height * LUTTableSize), 0);
@@ -77,28 +78,26 @@ void main()
     vec3 samplePoint = startPos + deltaRay * 0.5; 
     vec3 rayleighColor = vec3(0.0);
     vec3 mieColor = vec3(0.0);
-    // if (rayHeight < earthRadius && rayLength > halfChord) { // ray intersect with earth, will be covered
-    //     rayleighColor = vec3(0.0, 0.0, 0.0);
-    // }
-    // else 
-    //if (outAtmosphere) { // out of atmosphere, entire sight term from LUT
+    
+    // if (outAtmosphere) { // out of atmosphere, entire sight term from LUT
         for (int i = 0; i < samples; i++) {
             float pointHeight = length(samplePoint);
             float heightRate = max(0.0, (pointHeight - earthRadius) / atmosphereThickness);
             float cosSight = -dot(sightRay, samplePoint) / pointHeight;
             float cosSunlight = dot(normalizedSunLight, samplePoint) / pointHeight;
-            vec2 LUTTerm = (findFromLUT(heightRate, cosSight) + findFromLUT(heightRate, cosSunlight)).rg;
-            vec3 RwithinExp = rayleighTerm * LUTTerm.r; // rayleigh
-            vec3 Rtmp = vec3(exp(-RwithinExp.x), exp(-RwithinExp.y), exp(-RwithinExp.z));
-            rayleighColor += Rtmp * exp(-heightRate / rayleighBaseRate);
-            //rayleighColor = vec3(Rtmp.r * rayLength * rayleighPhaseTerm * 15e-5, acos(cosSight) / PI, cosSight);
-            vec3 MwithinExp = mieTerm * LUTTerm.g * 1.1; // mie
-            vec3 Mtmp = vec3(exp(-MwithinExp.x), exp(-MwithinExp.y), exp(-MwithinExp.z));
-            mieColor += Mtmp * exp(-heightRate / mieBaseRate);
+            vec3 RLUTTerm = findFromLUT(RLUT, heightRate, cosSight) * findFromLUT(RLUT, heightRate, cosSunlight);
+            rayleighColor += RLUTTerm * exp(-heightRate / rayleighBaseRate);
+
+            vec3 MLUTTerm = findFromLUT(MLUT, heightRate, cosSight) * findFromLUT(MLUT, heightRate, cosSunlight);
+            mieColor += MLUTTerm * exp(-heightRate / mieBaseRate);
 
             samplePoint += deltaRay;
         }
-    //}
+    // }
+    // else
+    // if (rayHeight < earthRadius - 100.0 && rayLength > halfChord) { // ray intersect with earth, will be covered
+    //     rayleighColor = vec3(0.0, 0.0, 0.0);
+    // }
     // else { // could calc sight term by Camera-Atmosphere divide Point-Atmosphere
     //     float cosCamera = dot(cameraPos, sightRay) / cameraHeight;
     //     vec2 camera_AtmosphereTerm = findFromLUT((cameraHeight - earthRadius) / atmosphereThickness, cosCamera).rg;

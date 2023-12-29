@@ -2,11 +2,13 @@
 
 atmosphereSphere::atmosphereSphere(float _radius, int _slices, int _stacks)
     : Sphere(_radius, _slices, _stacks) {
-    lookUpTable = new float[tableSize * tableSize * 3];
+    RLookUpTable = new float[tableSize * tableSize * 3];
+    MLookUpTable = new float[tableSize * tableSize * 3];
 }
 
 atmosphereSphere::~atmosphereSphere() {
-    delete[] lookUpTable;
+    delete[] RLookUpTable;
+    delete[] MLookUpTable;
 }
 
 void atmosphereSphere::setEarthRadius(float _earthRadius) {
@@ -85,14 +87,22 @@ void atmosphereSphere::calcLookUpTable() {
             glm::fvec2 opticalDepth = calcOpticalDepth(start, end, earthRadius, integralSamples);
 
             if (opticalDepth[0] < 0.0f) {
-                lookUpTable[index * 3] = 1e16f;
-                lookUpTable[index * 3 + 1] = 1e16f;
+                RLookUpTable[index * 3] = 0.0f;
+                RLookUpTable[index * 3 + 1] = 0.0f;
+                RLookUpTable[index * 3 + 2] = 0.0f;
+                MLookUpTable[index * 3] = 0.0f;
+                MLookUpTable[index * 3 + 1] = 0.0f;
+                MLookUpTable[index * 3 + 2] = 0.0f;
             }
             else {
-                lookUpTable[index * 3] = opticalDepth[0];
-                lookUpTable[index * 3 + 1] = opticalDepth[1];
+                RLookUpTable[index * 3] = exp(-opticalDepth[0] * rayleighTerm.r);
+                RLookUpTable[index * 3 + 1] = exp(-opticalDepth[0] * rayleighTerm.g);
+                RLookUpTable[index * 3 + 2] = exp(-opticalDepth[0] * rayleighTerm.b);
+                MLookUpTable[index * 3] = exp(-opticalDepth[1] * mieTerm.r);
+                MLookUpTable[index * 3 + 1] = exp(-opticalDepth[1] * mieTerm.g);
+                MLookUpTable[index * 3 + 2] = exp(-opticalDepth[1] * mieTerm.b);
             }
-            lookUpTable[index * 3 + 2] = 0.0f;
+            //lookUpTable[index * 3 + 2] = 0.0f;
             // if (heightIt > 490)
             //     std::cout << heightIt << ", " << angleIt << " : (" << lookUpTable[index * 3] << ", " << lookUpTable[index * 3 + 1] << "), ";
             index++;
@@ -102,8 +112,11 @@ void atmosphereSphere::calcLookUpTable() {
 }
 
 void atmosphereSphere::generateLUTTexture(TextureManager &textureManager) {
-    textures.push_back(std::make_pair("AtmosphereLUT", "LUT"));
-    textureManager.GenerateTextureRecFromFloats("AtmosphereLUT", tableSize, tableSize, lookUpTable);
+    textures.push_back(std::make_pair("AtmosphereRLUT", "RLUT"));
+    textureManager.GenerateTextureRecFromFloats("AtmosphereRLUT", tableSize, tableSize, RLookUpTable);
+
+    textures.push_back(std::make_pair("AtmosphereMLUT", "MLUT"));
+    textureManager.GenerateTextureRecFromFloats("AtmosphereMLUT", tableSize, tableSize, MLookUpTable);
 }
 
 void atmosphereSphere::initBuffer(Shader &shader) {
