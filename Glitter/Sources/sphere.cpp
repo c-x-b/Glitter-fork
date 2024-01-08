@@ -180,9 +180,9 @@ void Sphere::setPosition(const glm::fvec3 &_position) {
     position = _position;
 }
 
-// void Sphere::setScale(const glm::fvec3 &_scale) {
-//     scale = _scale;
-// }
+void Sphere::setScale(const glm::fvec3 &_scale) {
+    scale = _scale;
+}
 
 void Sphere::setDiffuse(const glm::fvec3 &_diffuse) {
     diffuse = _diffuse;
@@ -273,7 +273,7 @@ void Sphere::render(Shader &shader, TextureManager &textureManager) {
 		textureManager.BindTexture2D(it->first, it->second, shader);
 	}
 
-	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), glm::fvec3(radius, radius, radius));
+	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), scale);
 	glm::fmat4 translateMatrix = glm::translate(glm::fmat4(1.0f), position);
 	glm::fmat4 rotationMatrix_X = glm::rotate(glm::fmat4(1.0f), angle[0], glm::fvec3(1.0f, 0.0f, 0.0f));
 	glm::fmat4 rotationMatrix_Y = glm::rotate(glm::fmat4(1.0f), angle[1], glm::fvec3(0.0f, 1.0f, 0.0f));

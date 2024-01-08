@@ -55,10 +55,10 @@ float quadVertices[] = {
 };
 
 void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view) {
-    double cameraHeight = glm::length(camera.Position);
+    double cameraHeight = glm::length(camera.Position) * scale;
     shader.use();
-    // vertex
-    shader.setVec3("cameraPos", camera.Position);
+
+    shader.setVec3("cameraPos", camera.Position * scale);
     shader.setFloat("cameraHeight", cameraHeight);
     shader.setFloat("cameraHeight2", cameraHeight * cameraHeight);
     shader.setVec3("sunLightDir", lightDir);
@@ -69,15 +69,16 @@ void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view)
     shader.setFloat("PI", PI);
     shader.setMat4("view", view);
     shader.setMat4("projection", projection);
-    // fragment
-    shader.setVec3("lightColor", lightColor * 5.0f);
+
+    shader.setVec3("lightColor", lightColor * 10.0f);
+    shader.setBool("mode", mode);
 }
 
 int main(int argc, char * argv[]) {
 
     // Load GLFW and Create a Window
     glfwInit();
-    glfwWindowHint(GLFW_SAMPLES, 4);
+    //glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
@@ -94,10 +95,12 @@ int main(int argc, char * argv[]) {
     // Create Context and Load OpenGL Functions
     glfwMakeContextCurrent(mWindow);
     glfwSetKeyCallback(mWindow, key_callback);
-    glfwSetCursorPosCallback(mWindow, mouse_callback);
+    glfwSetCursorPosCallback(mWindow, cursor_pos_callback);
+    glfwSetMouseButtonCallback(mWindow, mouse_button_callback);
     glfwSetScrollCallback(mWindow, scroll_callback);
 
-    glfwSetInputMode(mWindow, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetInputMode(mWindow, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(mWindow, GLFW_STICKY_MOUSE_BUTTONS, GLFW_TRUE);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -111,12 +114,14 @@ int main(int argc, char * argv[]) {
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
-    glEnable(GL_MULTISAMPLE);
+    //glEnable(GL_MULTISAMPLE);
 
     std::vector<std::pair<std::string, std::string>> textures;
 
     Shader shader("EarthVertex.vert", "EarthFragment.frag");
-    Shader atmosphereShader("AtmosphereVertex.vert", "AtmosphereFragment.frag");
+    Shader outAtmosphereShader("AtmosphereVertex.vert", "OutAtmosphereFragment.frag");
+    Shader insideAtmosphereShader("AtmosphereVertex.vert", "InsideAtmosphereFragment.frag");
+    // Shader atmosphereShader("NewAtmosphereVertex.vert", "NewAtmosphereFragment.frag");
     Shader testShader("BasicVertex.vert", "BasicFragment.frag");
 
     textureManager.LoadTexture2D("Textures/earth_day_8k.jpg", "EarthDay");
@@ -126,7 +131,7 @@ int main(int argc, char * argv[]) {
     Sphere *earth = new Sphere(earthRadius, 50, 50);
     earth->generateMesh();
     earth->setPosition(glm::fvec3(0.0f, 0.0f, 0.0f));
-    //earth->setScale(glm::fvec3(earthScale, earthScale, earthScale));
+    earth->setScale(glm::fvec3(earthScale, earthScale, earthScale));
     //earth->setDiffuse(glm::fvec3(1.0f, 0.941f, 0.898f));
     earth->setTextures(textures);
     earth->initBuffer(shader);
@@ -134,27 +139,35 @@ int main(int argc, char * argv[]) {
     atmosphereSphere *atmosphere = new atmosphereSphere(atmosphereRadius, 100, 100);
     atmosphere->generateMesh();
     atmosphere->setPosition(glm::fvec3(0.0f, 0.0f, 0.0f));
+    atmosphere->setScale(glm::fvec3(atmosphereScale, atmosphereScale, atmosphereScale));
     atmosphere->setEarthRadius(earthRadius);
     atmosphere->calcLookUpTable();
     atmosphere->generateLUTTexture(textureManager);
-    atmosphere->initBuffer(atmosphereShader);
+    atmosphere->initBuffer();
 
-    // unsigned int testVAO;
-    // glGenVertexArrays(1, &testVAO);
-    // unsigned int VBO;
-    // glGenBuffers(1, &VBO);
+    unsigned int testVAO;
+    glGenVertexArrays(1, &testVAO);
+    unsigned int VBO;
+    glGenBuffers(1, &VBO);
 
-    // glBindVertexArray(testVAO);
-    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    // glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
-    // glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    // glEnableVertexAttribArray(0);
-    // glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    // glEnableVertexAttribArray(1);
+    glBindVertexArray(testVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    // ImGui
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGui_ImplGlfw_InitForOpenGL( mWindow, true );
+    ImGui_ImplOpenGL3_Init();
 
     // Rendering Loop
     while (glfwWindowShouldClose(mWindow) == false) 
     {
+        // Necessary Calc
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
@@ -163,11 +176,24 @@ int main(int argc, char * argv[]) {
         float angle = currentFrame / 15 * PI;
         //lightDir = glm::fvec3(cos(angle), 0.0f, sin(angle));
 
-        // Background Fill Color
+
+        // ImGui Frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+
+        ImGui::NewFrame();
+
+        ImGui::Begin("Test");
+        ImGui::Text("Test");
+        ImGui::End();
+
+        ImGui::Render();
+        
+
+        // Render
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 10.0f, 3e7f);
+        glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 300.0f);
         glm::mat4 view = camera.GetViewMatrix();
 
         glCullFace(GL_BACK);
@@ -178,29 +204,50 @@ int main(int argc, char * argv[]) {
         shader.setMat4("projection", projection);
         shader.setMat4("view", view);
         glCheckError();
-        //earth->render(shader, textureManager);
+        earth->render(shader, textureManager);
         glCheckError();
-
+ 
         glCullFace(GL_FRONT);
-        setAtmosphereShader(atmosphereShader, projection, view);
-        glCheckError();
-        atmosphere->render(atmosphereShader, textureManager);
-        glCheckError();
+        if (glm::length(camera.Position) >= atmosphereScale) {
+            setAtmosphereShader(outAtmosphereShader, projection, view);
+            glCheckError();
+            atmosphere->render(outAtmosphereShader, textureManager);
+            glCheckError();
+        }
+        else {
+            setAtmosphereShader(insideAtmosphereShader, projection, view);
+            glCheckError();
+            atmosphere->render(insideAtmosphereShader, textureManager);
+            glCheckError();
+        }
 
+        // glm::mat4 projection_T = glm::inverse(projection);
+        // glm::mat4 view_T = glm::inverse(view);
+        // glCullFace(GL_BACK);
         // testShader.use();
-        // glBindVertexArray(testVAO);
+        // //testShader.setMat4("view_T", view_T);
+        // //testShader.setMat4("projection_T", projection_T);
+        // //testShader.setVec3("cameraPos", camera.Position);
         // glCheckError();
-        // textureManager.BindTexture2D("AtmosphereLUT", "texture1", testShader);
+        // textureManager.BindTextureRec("AtmosphereRLUT", "texture1", testShader);
+        // glCheckError();
+        // glBindVertexArray(testVAO);
         // glCheckError();
         // glDrawArrays(GL_TRIANGLES, 0, 6);
         // glCheckError();
         // textureManager.unbindAllTextures();
-        // glCheckError();
+
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // Flip Buffers and Draw
         glfwSwapBuffers(mWindow);
         glfwPollEvents();
-    }   
+    }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     glfwTerminate();
     return EXIT_SUCCESS;
 }

@@ -16,27 +16,29 @@ void atmosphereSphere::setEarthRadius(float _earthRadius) {
     atmosphereThickness = radius - earthRadius;
 }
 
-glm::fvec3 atmosphereSphere::solveHit(glm::fvec3 start, glm::fvec3 dir) {
+glm::fvec2 atmosphereSphere::solveHit(glm::fvec3 start, glm::fvec3 dir, float r) {
     // len(start + dir * x) = atmosphereRadius, 当一元二次方程来解
     // a = dir.x^2 + dir.y^2 + dir.z^2 = len(dir)^2
     // b = 2 * start.x * dir.x + 2 * start.y * dir.y + 2 * start.z * dir.z
     // c = len(start)^2 - atmosphereRadius^2
     float a = dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2];
     float b = 2 * (dir[0] * start[0] + dir[1] * start[1] + dir[2] * start[2]);
-    float c = start[0] * start[0] + start[1] * start[1] + start[2] * start[2] - radius * radius;
+    float c = start[0] * start[0] + start[1] * start[1] + start[2] * start[2] - r * r;
     float delta = b * b - 4 * a * c;
+    assert(delta >= 0);
     float tmp1 = -b / (2 * a);
     float tmp2 = sqrtf(delta) / (2 * a);
     float x1 = tmp1 - tmp2, x2 = tmp1 + tmp2;
     if (x1 <= 0.0f && x2 > 0.0f)
-        return (start + dir * x2);
+        return glm::fvec2(x2, x1);
     else if (x1 > 0.0f && x2 > 0.0f)
-        return (start + dir * x1);
+        return glm::fvec2(x1, x2);
     else {
-        std::cout << "x1: " << x1 << " x2: " << x2 << std::endl;
-        std::cout << start.x << "," << start.y << "," << start.z << "\n"
-                  << dir.x << "," << dir.y << "," << dir.z << std::endl;
-        assert(false);
+        // std::cout << "x1: " << x1 << " x2: " << x2 << std::endl;
+        // std::cout << start.x << "," << start.y << "," << start.z << "\n"
+        //           << dir.x << "," << dir.y << "," << dir.z << std::endl;
+        // assert(false);
+        return glm::fvec2(x1, x2);
     }
 }
 
@@ -55,7 +57,7 @@ glm::fvec2 atmosphereSphere::calcOpticalDepth(glm::fvec3 start, glm::fvec3 end, 
     for (int i = 0; i < samples;i++) {
         glm::fvec3 pos = start + delta * (float)i;
         float h = glm::length(pos) - baseRadius;
-        if (h<0.0f) {
+        if (h <= 0.0f) {
             result = glm::fvec2(-1.0f, -1.0f);
             break;
         }
@@ -83,7 +85,9 @@ void atmosphereSphere::calcLookUpTable() {
             float angle = deltaAngle * (0.5f + (float)angleIt);
             glm::fvec3 start(0.0f, height, 0.0f);
             glm::fvec3 hitDir(sinf(angle), cosf(angle), 0.0f);
-            glm::fvec3 end = solveHit(start, hitDir);
+            float rayHeight = height * hitDir[0];
+            glm::fvec2 hitLength = solveHit(start, hitDir, radius);
+            glm::fvec3 end = start + hitDir * hitLength[0];
             glm::fvec2 opticalDepth = calcOpticalDepth(start, end, earthRadius, integralSamples);
 
             if (opticalDepth[0] < 0.0f) {
@@ -119,7 +123,7 @@ void atmosphereSphere::generateLUTTexture(TextureManager &textureManager) {
     textureManager.GenerateTextureRecFromFloats("AtmosphereMLUT", tableSize, tableSize, MLookUpTable);
 }
 
-void atmosphereSphere::initBuffer(Shader &shader) {
+void atmosphereSphere::initBuffer() {
     std::cout << "Normals Size: " << normals.size() << std::endl;
     std::cout << "Tangents Size: " << tangents.size() << std::endl;
 
@@ -178,7 +182,7 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
     }
     //std::cout << glGetError() << std::endl;
 
-	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), glm::fvec3(radius, radius, radius));
+	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), scale);
 	glm::fmat4 translateMatrix = glm::translate(glm::fmat4(1.0f), position);
 	glm::fmat4 rotationMatrix_X = glm::rotate(glm::fmat4(1.0f), angle[0], glm::fvec3(1.0f, 0.0f, 0.0f));
 	glm::fmat4 rotationMatrix_Y = glm::rotate(glm::fmat4(1.0f), angle[1], glm::fvec3(0.0f, 1.0f, 0.0f));
@@ -188,7 +192,7 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
     shader.setMat4("model", modelMatrix);
     shader.setVec3("rayleighTerm", rayleighTerm);
     shader.setVec3("mieTerm", mieTerm);
-    shader.setInt("samples", 1);
+    shader.setInt("samples", 50);
     shader.setInt("LUTTableSize", tableSize);
     shader.setFloat("rayleighBaseRate", rayleighBaseRate);
     shader.setFloat("mieBaseRate", mieBaseRate);

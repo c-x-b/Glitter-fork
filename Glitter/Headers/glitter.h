@@ -8,6 +8,9 @@
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
 #include <btBulletDynamicsCommon.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -25,11 +28,18 @@ const unsigned int SCR_WIDTH = 1024;
 const unsigned int SCR_HEIGHT = 1024;
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
-Camera camera(glm::vec3(0.0f, 0.0f, 1.5e7f));
+Camera camera(glm::vec3(0.0f, 0.0f, 150.0f));
 
 const float earthRadius = 6360e3f;
 const float atmosphereRadius = earthRadius + 60e3f;
 
+const float scale = 1e5f;
+const float earthScale = earthRadius / scale;
+const float atmosphereScale = atmosphereRadius / scale;
+
+bool mode = true;
+
+bool mouses[16];
 bool keys[1024];
 bool keysPressed[1024];
 // Moves/alters the camera positions based on user input
@@ -45,10 +55,22 @@ void Do_Movement()
     if (keys[GLFW_KEY_D])
         camera.ProcessKeyboard(RIGHT, deltaTime);
     if (keys[GLFW_KEY_Q]) {
-        camera.Position = glm::normalize(camera.Position) * (6360010.0f);
+        camera.Position = glm::normalize(camera.Position) * (6362000.0f / scale);
     }
     if (keys[GLFW_KEY_E]) {
         std::cout << glm::length(camera.Position) << " " << earthRadius << std::endl;
+    }
+    if (keys[GLFW_KEY_R]) {
+        camera.Up = glm::normalize(camera.Position);
+    }
+    if (keys[GLFW_KEY_T]) {
+        camera.Up = glm::vec3(0.0f, 1.0f, 0.0f);
+    }
+    if (keys[GLFW_KEY_1]) {
+        mode = true;
+    }
+    if (keys[GLFW_KEY_2]) {
+        mode = false;
     }
 }
 
@@ -71,7 +93,7 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 }
 
 // Moves/alters the camera positions based on user input
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
+void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     if (firstMouse)
     {
@@ -86,7 +108,23 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     lastX = xpos;
     lastY = ypos;
 
-    camera.ProcessMouseMovement(xoffset, yoffset);
+    if (mouses[GLFW_MOUSE_BUTTON_RIGHT])
+        camera.ProcessMouseMovement(xoffset, yoffset);
+}
+
+void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (button>=0 && button<=GLFW_MOUSE_BUTTON_LAST) 
+    {
+        if (action == GLFW_PRESS) 
+        {
+            mouses[button] = true;
+        }
+        else 
+        {
+            mouses[button] = false;
+        }
+    }
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)

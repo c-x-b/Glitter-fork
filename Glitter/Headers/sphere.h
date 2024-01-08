@@ -25,7 +25,7 @@ protected:
     float radius;
 	int slices, stacks;
     glm::fvec3 position; 
-    //glm::fvec3 scale;
+    glm::fvec3 scale;
     glm::fvec3 angle;
     glm::fvec3 diffuse;
 
@@ -43,7 +43,7 @@ public:
 
     void generateMesh();
     void setPosition(const glm::fvec3 &_position);
-    //void setScale(const glm::fvec3 &_scale);
+    void setScale(const glm::fvec3 &_scale);
     void setDiffuse(const glm::fvec3 &_diffuse);
     void setTextures(const std::vector<std::pair<std::string, std::string>> &_textures);
 
