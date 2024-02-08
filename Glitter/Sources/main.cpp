@@ -164,6 +164,8 @@ int main(int argc, char * argv[]) {
     ImGui_ImplGlfw_InitForOpenGL( mWindow, true );
     ImGui_ImplOpenGL3_Init();
 
+    float insideAtmosMethodBoundary = 0.0f;
+
     // Rendering Loop
     while (glfwWindowShouldClose(mWindow) == false) 
     {
@@ -184,7 +186,9 @@ int main(int argc, char * argv[]) {
         ImGui::NewFrame();
 
         ImGui::Begin("Test");
-        ImGui::Text("Test");
+        ImGui::SliderFloat("boundaryRatio", &insideAtmosMethodBoundary, 0.0f, 1.0f);
+        float temp = (glm::length(camera.Position) - earthScale) / (atmosphereScale - earthScale);
+        ImGui::Text("cameraRatio=%.2f", temp);
         ImGui::End();
 
         ImGui::Render();
@@ -217,6 +221,8 @@ int main(int argc, char * argv[]) {
         else {
             setAtmosphereShader(insideAtmosphereShader, projection, view);
             glCheckError();
+            insideAtmosphereShader.use();
+            insideAtmosphereShader.setFloat("renderBoundary", insideAtmosMethodBoundary);
             atmosphere->render(insideAtmosphereShader, textureManager);
             glCheckError();
         }

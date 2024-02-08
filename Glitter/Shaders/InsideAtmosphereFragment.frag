@@ -27,7 +27,9 @@ uniform float mieBaseRate;
 uniform float g;
 uniform float g2; // g*g
 
+// debug
 uniform bool mode;
+uniform float renderBoundary;
 
 in vec3 actualPos;
 
@@ -43,6 +45,7 @@ vec3 findFromLUT(sampler2DRect LUT, float height, float cosValue) {
 
 void main() {
     vec3 outPos = normalize(actualPos) * atmosphereRadius;
+    float atmosphereThickness = atmosphereRadius - earthRadius;
 
     vec3 sightRay = outPos - cameraPos;
     float rayLength = length(sightRay); // length of the light ray in atmosphere
@@ -59,13 +62,12 @@ void main() {
     float tmp = dot(-cameraPos, sightRay);
     float halfChord = rayLength - tmp;
     float rayHeight = sqrt(atmosphereRadius2 - halfChord * halfChord);
-    float halfCameraChord = sqrt(atmosphereRadius2 - cameraHeight2);
-
+    // float halfCameraChord = sqrt(atmosphereRadius2 - cameraHeight2); // half length of chord vertical to O-Camera
+    float boundaryHeight = earthRadius + renderBoundary * atmosphereThickness;
     startPos = cameraPos;
     outAtmosphere = false;
 
     vec3 normalizedSunLight = normalize(sunLightDir);
-    float atmosphereThickness = atmosphereRadius - earthRadius;
     float cosSunAndSight = dot(normalizedSunLight, sightRay);
     float rayleighPhaseTerm = (1.0 + cosSunAndSight * cosSunAndSight) * const3Divide16PI;
     float miePhaseTerm = (1.0 - g2) * (1.0 + cosSunAndSight * cosSunAndSight) / ((2 + g2) * pow(1 + g2 - 2 * g * cosSunAndSight, 1.5)) * 2 * const3Divide16PI;
@@ -74,7 +76,8 @@ void main() {
     vec3 rayleighColor = vec3(0.0);
     vec3 mieColor = vec3(0.0);
     
-    if (rayLength <= halfCameraChord) {
+    float temp = dot(outPos, cameraPos) / cameraHeight; 
+    if (temp >= boundaryHeight) {
         float cosCamera = dot(cameraPos, sightRay) / cameraHeight;
         float cameraHeightRate = max(0.0, (cameraHeight - earthRadius) / atmosphereThickness);
         vec3 cameraRTerm = findFromLUT(RLUT, cameraHeightRate, cosCamera);
