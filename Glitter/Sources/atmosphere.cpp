@@ -1,19 +1,19 @@
 #include "atmosphere.h"
-
+/*
 atmosphereSphere::atmosphereSphere(float _radius, int _slices, int _stacks)
     : Sphere(_radius, _slices, _stacks) {
-    RLookUpTable = new float[tableSize * tableSize * 3];
-    MLookUpTable = new float[tableSize * tableSize * 3];
+    // RLookUpTable = new float[tableSize * tableSize * 3];
+    // MLookUpTable = new float[tableSize * tableSize * 3];
 }
 
 atmosphereSphere::~atmosphereSphere() {
-    delete[] RLookUpTable;
-    delete[] MLookUpTable;
+    // delete[] RLookUpTable;
+    // delete[] MLookUpTable;
 }
 
 void atmosphereSphere::setEarthRadius(float _earthRadius) {
-    earthRadius = _earthRadius;
-    atmosphereThickness = radius - earthRadius;
+    // earthRadius = _earthRadius;
+    // atmosphereThickness = radius - earthRadius;
 }
 
 glm::fvec2 atmosphereSphere::solveHit(glm::fvec3 start, glm::fvec3 dir, float r) {
@@ -176,12 +176,6 @@ void atmosphereSphere::initBuffer() {
 void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
     shader.use();
 
-    //std::cout << "atmosphere render start " << glGetError() << std::endl;
-    for (auto it = textures.begin(); it != textures.end(); it++) {
-        textureManager.BindTextureRec(it->first, it->second, shader);
-    }
-    //std::cout << glGetError() << std::endl;
-
 	glm::fmat4 scaleMatrix = glm::scale(glm::fmat4(1.0f), scale);
 	glm::fmat4 translateMatrix = glm::translate(glm::fmat4(1.0f), position);
 	glm::fmat4 rotationMatrix_X = glm::rotate(glm::fmat4(1.0f), angle[0], glm::fvec3(1.0f, 0.0f, 0.0f));
@@ -190,14 +184,6 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
 
 	glm::fmat4 modelMatrix = scaleMatrix * rotationMatrix_X * rotationMatrix_Y * rotationMatrix_Z * translateMatrix;
     shader.setMat4("model", modelMatrix);
-    shader.setVec3("rayleighTerm", rayleighTerm);
-    shader.setVec3("mieTerm", mieTerm);
-    shader.setInt("samples", 50);
-    shader.setInt("LUTTableSize", tableSize);
-    shader.setFloat("rayleighBaseRate", rayleighBaseRate);
-    shader.setFloat("mieBaseRate", mieBaseRate);
-    shader.setFloat("g", g);
-    shader.setFloat("g2", g * g);
     //std::cout << glGetError() << std::endl;
 
     glBindVertexArray(VAO);
@@ -206,3 +192,4 @@ void atmosphereSphere::render(Shader &shader, TextureManager &textureManager) {
 
     textureManager.unbindAllTextures();
 }
+*/

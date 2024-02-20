@@ -1,5 +1,5 @@
-#version 330 core
-precision highp float;
+// #include<Header.glsl>
+
 layout (location = 0) in vec3 aPos;
 
 // set in main

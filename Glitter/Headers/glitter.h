@@ -1,7 +1,6 @@
 // Preprocessor Directives
 #ifndef GLITTER_H
 #define GLITTER_H
-#pragma once
 
 // System Headers
 #include <assimp/Importer.hpp>
@@ -31,11 +30,12 @@ float lastY = SCR_HEIGHT / 2.0f;
 Camera camera(glm::vec3(0.0f, 0.0f, 150.0f));
 
 const float earthRadius = 6360e3f;
-const float atmosphereRadius = earthRadius + 60e3f;
+const float atmosphereRadius = earthRadius * 1.015f;
 
 const float scale = 1e5f;
 const float earthScale = earthRadius / scale;
 const float atmosphereScale = atmosphereRadius / scale;
+const float atmosphereThicknessScale = atmosphereScale - earthScale;
 
 bool mode = true;
 

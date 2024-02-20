@@ -2,7 +2,7 @@
 #include "glitter.h"
 #include "shader.h"
 #include "sphere.h"
-#include "atmosphere.h"
+//#include "atmosphere.h"
 #include "textureManager.h"
 
 // System Headers
@@ -54,7 +54,7 @@ float quadVertices[] = {
     1.0f,  1.0f,  1.0f, 1.0f
 };
 
-void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view) {
+void setHeaderUniforms(Shader &shader, glm::mat4 &projection, glm::mat4 &view) {
     double cameraHeight = glm::length(camera.Position) * scale;
     shader.use();
 
@@ -67,10 +67,12 @@ void setAtmosphereShader(Shader &shader, glm::mat4 &projection, glm::mat4 &view)
     shader.setFloat("earthRadius", earthRadius);
     shader.setFloat("const3Divide16PI", const3Divide16PI);
     shader.setFloat("PI", PI);
+    shader.setVec3("lightColor", lightColor * 10.0f);
+
+    AtmosphereState::LUT.setUniforms(shader, textureManager);
+
     shader.setMat4("view", view);
     shader.setMat4("projection", projection);
-
-    shader.setVec3("lightColor", lightColor * 10.0f);
     shader.setBool("mode", mode);
 }
 
@@ -118,31 +120,32 @@ int main(int argc, char * argv[]) {
 
     std::vector<std::pair<std::string, std::string>> textures;
 
-    Shader shader("EarthVertex.vert", "EarthFragment.frag");
-    Shader outAtmosphereShader("AtmosphereVertex.vert", "OutAtmosphereFragment.frag");
-    Shader insideAtmosphereShader("AtmosphereVertex.vert", "InsideAtmosphereFragment.frag");
+    Shader shader("EarthVertex.vert", "EarthFragment.frag", "Header.glsl");
+    Shader outAtmosphereShader("AtmosphereVertex.vert", "OutAtmosphereFragment.frag", "Header.glsl");
+    Shader insideAtmosphereShader("AtmosphereVertex.vert", "InsideAtmosphereFragment.frag", "Header.glsl");
     // Shader atmosphereShader("NewAtmosphereVertex.vert", "NewAtmosphereFragment.frag");
     Shader testShader("BasicVertex.vert", "BasicFragment.frag");
 
     textureManager.LoadTexture2D("Textures/earth_day_8k.jpg", "EarthDay");
+    textureManager.LoadTexture2D("Textures/earth_specular.jpg", "EarthSpecular");
     textures.clear();
     textures.push_back(std::make_pair("EarthDay", "sphereTexture"));
+    textures.push_back(std::make_pair("EarthSpecular", "sphereSpecularTexture"));
+
+    AtmosphereState::LUT.init(textureManager);
 
     Sphere *earth = new Sphere(earthRadius, 50, 50);
     earth->generateMesh();
     earth->setPosition(glm::fvec3(0.0f, 0.0f, 0.0f));
     earth->setScale(glm::fvec3(earthScale, earthScale, earthScale));
-    //earth->setDiffuse(glm::fvec3(1.0f, 0.941f, 0.898f));
+    // earth->setDiffuse(glm::fvec3(1.0f, 0.941f, 0.898f));
     earth->setTextures(textures);
-    earth->initBuffer(shader);
+    earth->initBuffer();
 
-    atmosphereSphere *atmosphere = new atmosphereSphere(atmosphereRadius, 100, 100);
+    Sphere *atmosphere = new Sphere(atmosphereRadius, 100, 100);
     atmosphere->generateMesh();
     atmosphere->setPosition(glm::fvec3(0.0f, 0.0f, 0.0f));
     atmosphere->setScale(glm::fvec3(atmosphereScale, atmosphereScale, atmosphereScale));
-    atmosphere->setEarthRadius(earthRadius);
-    atmosphere->calcLookUpTable();
-    atmosphere->generateLUTTexture(textureManager);
     atmosphere->initBuffer();
 
     unsigned int testVAO;
@@ -165,6 +168,9 @@ int main(int argc, char * argv[]) {
     ImGui_ImplOpenGL3_Init();
 
     float insideAtmosMethodBoundary = 0.0f;
+    int drawMode = 0;
+    float logCameraSpeed = 2;
+    bool clampCamera = true;
 
     // Rendering Loop
     while (glfwWindowShouldClose(mWindow) == false) 
@@ -186,40 +192,56 @@ int main(int argc, char * argv[]) {
         ImGui::NewFrame();
 
         ImGui::Begin("Test");
-        ImGui::SliderFloat("boundaryRatio", &insideAtmosMethodBoundary, 0.0f, 1.0f);
-        float temp = (glm::length(camera.Position) - earthScale) / (atmosphereScale - earthScale);
-        ImGui::Text("cameraRatio=%.2f", temp);
+        ImGui::SliderFloat("boundaryRatio", &insideAtmosMethodBoundary, -2.0f, 1.0f);
+        ImGui::RadioButton("Draw Face", &drawMode, 0); ImGui::SameLine();
+        ImGui::RadioButton("Draw Line", &drawMode, 1);
+        ImGui::DragFloat("Camera Speed", &logCameraSpeed, 0.01f, 0.0f, 2.0f, "%.2f", ImGuiSliderFlags_AlwaysClamp);
+        float temp = glm::length(camera.Position) - earthScale;
+        if (clampCamera && temp < 0.1f) {
+            camera.Position = glm::normalize(camera.Position) * (earthScale + 0.1f);
+            temp = 0.1f;
+        }
+        ImGui::Text("cameraRatio=%.2f", temp); ImGui::SameLine();
+        ImGui::Checkbox("Clamp Camera", &clampCamera);
         ImGui::End();
 
         ImGui::Render();
         
+        camera.MovementSpeed = 0.2f * pow(10, logCameraSpeed);
 
         // Render
         glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glm::mat4 projection = glm::perspective(glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 300.0f);
         glm::mat4 view = camera.GetViewMatrix();
+        
+        if (drawMode == 0) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+        else if (drawMode == 1) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        }
 
         glCullFace(GL_BACK);
+        setHeaderUniforms(shader, projection, view);
         shader.use();
-        shader.setVec3("viewPos", camera.Position);
         shader.setVec3("light.direction", lightDir);
         shader.setVec3("light.color", lightColor);
-        shader.setMat4("projection", projection);
-        shader.setMat4("view", view);
+        // shader.setMat4("projection", projection);
+        // shader.setMat4("view", view);
         glCheckError();
         earth->render(shader, textureManager);
         glCheckError();
- 
+
         glCullFace(GL_FRONT);
         if (glm::length(camera.Position) >= atmosphereScale) {
-            setAtmosphereShader(outAtmosphereShader, projection, view);
+            setHeaderUniforms(outAtmosphereShader, projection, view);
             glCheckError();
             atmosphere->render(outAtmosphereShader, textureManager);
             glCheckError();
         }
         else {
-            setAtmosphereShader(insideAtmosphereShader, projection, view);
+            setHeaderUniforms(insideAtmosphereShader, projection, view);
             glCheckError();
             insideAtmosphereShader.use();
             insideAtmosphereShader.setFloat("renderBoundary", insideAtmosMethodBoundary);

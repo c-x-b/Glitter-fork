@@ -1,6 +1,5 @@
 #ifndef TEXTUREMANAGER_H
 #define TEXTUREMANAGER_H
-#pragma once
 
 #include "shader.h"
 

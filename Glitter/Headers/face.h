@@ -1,11 +1,8 @@
 #ifndef FACE_H
 #define FACE_H
-#pragma once
 
 #include <glm/glm.hpp>
 #include <cassert>
-
-#define PI 3.14159
 
 struct face{
 	unsigned int a, b, c, n, t;

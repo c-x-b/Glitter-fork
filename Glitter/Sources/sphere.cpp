@@ -192,7 +192,7 @@ void Sphere::setTextures(const std::vector<std::pair<std::string, std::string>> 
 	textures = _textures;
 }
 
-void Sphere::initBuffer(Shader &shader) {
+void Sphere::initBuffer() {
     std::cout << "Normals Size: " << normals.size() << std::endl;
 	std::cout << "Tangents Size: " << tangents.size() << std::endl;
 

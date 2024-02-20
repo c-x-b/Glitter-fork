@@ -1,7 +1,7 @@
 #ifndef SPHERE_H
 #define SPHERE_H
-#pragma once
 
+#include "atmosphereState.h"
 #include "face.h"
 #include "shader.h"
 #include "textureManager.h"
@@ -47,7 +47,7 @@ public:
     void setDiffuse(const glm::fvec3 &_diffuse);
     void setTextures(const std::vector<std::pair<std::string, std::string>> &_textures);
 
-    void initBuffer(Shader &shader);
+    void initBuffer();
     void render(Shader &shader, TextureManager &textureManager);
 };
 
